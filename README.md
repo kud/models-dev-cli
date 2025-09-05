@@ -1,105 +1,152 @@
-# models-dev (mdl)
+<div align="center">
 
-CLI to explore the [models.dev](https://models.dev) model catalogue.
-Supports both:
-- Non-interactive flag driven usage (script friendly)
-- Interactive TUI exploration (search / filter / sort + copy model id)
+# models-dev CLI
 
-## Install
+Explore the models.dev catalogue from your terminal. Fast search, rich TUI, copy-to-clipboard.
+
+[![npm](https://img.shields.io/npm/v/models-dev-cli.svg?label=models-dev-cli)](https://www.npmjs.com/package/models-dev-cli)
+![node](https://img.shields.io/badge/node-%3E%3D18-3C873A)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
+</div>
+
+---
+
+## TL;DR
 
 ```bash
+# one‑shot
+npx models-dev
+
+# or install globally
 npm i -g models-dev-cli
-# or (when repo cloned)
-npm install && npm link
+models-dev   # alias: mdl
 ```
 
-## Usage (Non-Interactive)
+The CLI fetches the live catalogue and opens a split‑pane TUI by default. Prefer a non‑interactive table? Use flags (below) or `--ui table`.
+
+## Preview
+
+<!-- Screenshots of the command in action -->
+<p align="center">
+  <img src="assets/preview-tui-details.png" alt="Interactive TUI – details view" width="900" />
+</p>
+
+<p align="center">
+  <img src="assets/preview-tui-provider-picker.png" alt="Interactive TUI – provider picker" width="900" />
+</p>
+
+<p align="center">
+  <img src="assets/preview-tui-list.png" alt="Interactive TUI – model list" width="900" />
+</p>
+
+<p align="center">
+  <img src="assets/preview-tui-filters-bar.png" alt="Interactive TUI – filters and status bar" width="900" />
+</p>
+
+<p align="center">
+  <img src="assets/preview-table-mode.png" alt="Non‑interactive table mode" width="900" />
+</p>
+
+## Highlights
+
+- Blazing‑fast fuzzy search (Fuse) across name and id
+- Filters for provider, tool‑calling, and reasoning
+- Colorful split‑pane TUI with detail panel and copy‑ID
+- Script‑friendly JSON and table output modes
+- Safe terminal handling (works around Setulc/terminfo issues in iTerm2)
+
+## Interactive TUI
+
+Keybindings:
+
+- `/`: search (fuzzy; blank clears)
+- `p`: provider picker
+- `t`: cycle tool filter (Any → Yes → No)
+- `r`: cycle reasoning filter (Any → Yes → No)
+- `s`: cycle sort (Default → Provider → Input $ → Output $ → Context)
+- `c`: copy current model id to clipboard
+- `h`: toggle the help/status bar
+- `q`: quit
+- Navigation: arrows or `j/k`, PageUp/PageDown scroll
+
+Tips:
+
+- The left list shows the provider in cyan and the model name in white.
+- The detail panel groups info into Capabilities, Modalities, Costs, Limits and Meta, with color badges for quick scanning.
+
+Force a mode:
 
 ```bash
-mdl --search claude
-mdl --provider openai --sort input-cost
-mdl --tool --reasoning
-mdl --provider anthropic --compact
-mdl --search grok --json
+MODELS_DEV_UI=blessed models-dev     # force TUI
+MODELS_DEV_UI=table models-dev       # force table prompt mode
+```
+
+## Non‑Interactive Usage
+
+```bash
+models-dev --search claude
+models-dev --provider openai --sort input-cost
+models-dev --tool --reasoning
+models-dev --provider anthropic --compact
+models-dev --search grok --json
 ```
 
 Flags:
+
 - `--search <term>`: substring match on name/id
-- `--provider <name>`: provider id or display name (case-insensitive)
-- `--tool`: only models supporting tool calling
+- `--provider <name>`: provider id or display name (case‑insensitive)
+- `--tool`: only models with tool calling
 - `--reasoning`: only models with reasoning capability
-- `--sort <field>`: one of `input-cost`, `output-cost`, `provider` (interactive mode exposes many more sort keys)
-- `--json`: raw JSON of filtered list
-- `--compact`: `provider:model:name:id` lines
-
-If you pass no flags, interactive mode launches automatically. Use `--ui blessed` or `--ui table` (or env `MODELS_DEV_UI=blessed|table`) to force a mode; default is auto-detect (tries blessed then falls back).
-
-## Interactive Mode
-
-```bash
-mdl
-```
-
-Interactive now has two modes:
-1. Legacy prompt loop (if blessed not installed)
-2. Split-pane TUI (auto when `blessed` is available) with real-time navigation.
-
-Split-pane TUI keys:
-- `/` search (fuzzy; blank clears)
-- `p` provider filter selector
-- `t` cycle tool filter (Any → Yes → No)
-- `r` cycle reasoning filter (Any → Yes → No)
-- `s` cycle sort (Default → Provider → Input $ → Output $ → Context)
-- `c` copy selected model id
-- `h` toggle help/status bar
-- `q` quit
-- Arrow keys / j k: navigate list; PageUp/PageDown: scroll
-
-Legacy single-letter prompt loop (fallback) controls:
-- `s` set search (fuzzy)
-- `p` provider filter
-- `t` tool filter (Any/Y/N)
-- `r` reasoning filter (Any/Y/N)
-- `o` sort selection
-- `c` copy a model id to clipboard
-- `q` quit
-
-Table auto refreshes after each action. Top 30 rows displayed for speed.
+- `--sort <field>`: one of `input-cost`, `output-cost`, `provider` (the TUI exposes additional sorts)
+- `--json`: emit raw JSON for the resulting models
+- `--compact`: print `provider:model:name:id` per line
+- `--ui <mode>`: `blessed | table | auto` (default)
 
 ## Output Columns
-Columns shown in non-interactive & interactive table:
-- Provider
-- Model (human label)
-- Provider ID
-- Model ID (full API model id)
-- Tool (Y/N)
-- Reason (reasoning capability Y/N)
-- In Mod (input modalities list)
-- Out Mod (output modalities list)
-- In $ (input cost / 1M tokens when available)
-- Out $ (output cost / 1M tokens when available)
-- Cache R (cache read cost / 1M tokens when available)
-- Cache W (cache write cost / 1M tokens when available)
-- Ctx (context limit tokens)
-- Out Lim (max output tokens)
-- Temp (temperature adjustable Y/N)
-- Weights (OPEN/CLOSED)
-- Knowledge (model training/knowledge cutoff if provided)
-- Release (release date)
-- Updated (last updated date)
 
-Dates are displayed verbatim as provided by the API.
-Missing numeric/cost fields show '-'.
-## Notes
-- Requires Node.js 18+
-- Network call: single GET to `https://models.dev/api.json`
-- Interactive deps (`inquirer`, `fuse.js`, `clipboardy`) are lazy-loaded
+Shown in both the non‑interactive table and the interactive list view when applicable:
 
-## Roadmap Ideas
-- Cache + `--refresh` flag
-- Additional filters (context length min, modality)
-- Export to CSV / Markdown
-- Batch cost comparator (`--compare modelA,modelB,...`)
+- Provider, Model, Provider ID, Model ID
+- Tool, Reason (reasoning capability)
+- Modalities (input/output)
+- Costs (input/output/cache read/cache write; per 1M tokens)
+- Limits (context, output tokens)
+- Temperature flag, Weight openness, Knowledge cutoff, Release, Updated
+
+Missing numeric/cost fields render as `-`.
+
+## Troubleshooting
+
+Running in iTerm2 and seeing a Setulc/terminfo error? The CLI auto‑detects iTerm2/`xterm-256color` and avoids `tput`, which prevents the crash.
+
+If you still hit issues:
+
+```bash
+# simplest workaround
+TERM=xterm npx models-dev
+
+# fall back to table UI
+models-dev --ui table
+```
+
+No color output desired? Set `NO_COLOR=1`.
+
+## Development
+
+```bash
+git clone https://github.com/your-org/models-dev-cli
+cd models-dev-cli
+npm install
+npm link           # exposes `models-dev` and `mdl`
+models-dev         # run locally
+```
+
+Code style notes:
+
+- Keep changes minimal and focused
+- Prefer small PRs with clear descriptions and screenshots/GIFs for UI changes
 
 ## License
+
 MIT

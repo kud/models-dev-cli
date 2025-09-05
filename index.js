@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pkg = require('./package.json');
 import fetch from 'node-fetch';
 import Table from 'cli-table3';
 import chalk from 'chalk';
@@ -128,11 +131,22 @@ const interactiveBlessedMode = async () => {
     return;
   }
   const providers = [...new Set(models.map(m => m.provider))].sort();
+  const allModalities = [...new Set(models.flatMap(m => [
+    ...(m.modalitiesInput || []),
+    ...(m.modalitiesOutput || [])
+  ]))].sort();
 
   let searchTerm = '';
   let providerFilter = null; // null => Any
   let toolFilter = null;     // null => Any, true => only tool, false => only non tool
   let reasoningFilter = null;// same pattern
+  let weightsFilter = null;  // null => Any, true => OPEN, false => CLOSED
+  let tempFilter = null;     // null => Any, true => Y, false => N
+  let minContextFilter = null; // number|null
+  let maxInputCostFilter = null; // number|null
+  let maxOutputCostFilter = null; // number|null
+  let modInFilter = [];      // string[]
+  let modOutFilter = [];     // string[]
   let sortIndex = 0;
   const sortModes = [
     { name: 'Default', fn: null },
@@ -218,14 +232,14 @@ const interactiveBlessedMode = async () => {
   const status = blessed.box({
     parent: screen,
     bottom: 0,
-    height: 1,
+    height: 2,
     width: '100%',
     tags: true,
     style: { fg: 'gray' },
     content: ''
   });
 
-  const helpText = 'q quit  / search  p provider  t tool  r reasoning  s sort  c copy id  h help';
+  const helpText = 'q quit  / search  p provider  t tool  r reasoning  w weights  y temp  x ctx≥  i in$≤  o out$≤  m modalities  s sort  c copy id  h help';
   let showHelp = true;
 
   function cycleTool() {
@@ -235,6 +249,8 @@ const interactiveBlessedMode = async () => {
     if (reasoningFilter === null) reasoningFilter = true; else if (reasoningFilter === true) reasoningFilter = false; else reasoningFilter = null;
   }
   function cycleSort() { sortIndex = (sortIndex + 1) % sortModes.length; }
+  function cycleWeights() { if (weightsFilter === null) weightsFilter = true; else if (weightsFilter === true) weightsFilter = false; else weightsFilter = null; }
+  function cycleTemp() { if (tempFilter === null) tempFilter = true; else if (tempFilter === true) tempFilter = false; else tempFilter = null; }
 
   function fmtBool(v) { return v ? '{green-fg}Y{/green-fg}' : '{gray-fg}N{/gray-fg}'; }
   function fmtOpen(v) { return v ? '{green-fg}OPEN{/green-fg}' : '{gray-fg}CLOSED{/gray-fg}'; }
@@ -249,6 +265,13 @@ const interactiveBlessedMode = async () => {
     if (providerFilter) listData = listData.filter(m => m.provider === providerFilter);
     if (toolFilter !== null) listData = listData.filter(m => toolFilter ? m.tool : !m.tool);
     if (reasoningFilter !== null) listData = listData.filter(m => reasoningFilter ? m.reasoning : !m.reasoning);
+    if (weightsFilter !== null) listData = listData.filter(m => weightsFilter ? m.openWeights : !m.openWeights);
+    if (tempFilter !== null) listData = listData.filter(m => tempFilter ? m.temperature : !m.temperature);
+    if (minContextFilter != null) listData = listData.filter(m => (m.contextLimit ?? -Infinity) >= minContextFilter);
+    if (maxInputCostFilter != null) listData = listData.filter(m => m.inputCost != null && m.inputCost <= maxInputCostFilter);
+    if (maxOutputCostFilter != null) listData = listData.filter(m => m.outputCost != null && m.outputCost <= maxOutputCostFilter);
+    if (modInFilter.length) listData = listData.filter(m => modInFilter.every(x => (m.modalitiesInput || []).includes(x)));
+    if (modOutFilter.length) listData = listData.filter(m => modOutFilter.every(x => (m.modalitiesOutput || []).includes(x)));
     const sorter = sortModes[sortIndex].fn;
     if (sorter) listData = [...listData].sort(sorter);
     filtered = listData.slice(0, 500); // safety cap
@@ -336,16 +359,22 @@ const interactiveBlessedMode = async () => {
 
   function updateStatus(message) {
     if (showHelp) {
-      status.setContent(
-        `{white-fg}${helpText}{/white-fg}  | ` +
-        `Search: {yellow-fg}${searchTerm || '*'}{/yellow-fg}  ` +
+      const line1 = `{white-fg}${helpText}{/white-fg}`;
+      const line2 = `Search: {yellow-fg}${searchTerm || '*'}{/yellow-fg}  ` +
         `Prov: {yellow-fg}${providerFilter || '*'}{/yellow-fg}  ` +
         `Tool: {yellow-fg}${toolFilter===null?'*':(toolFilter?'Y':'N')}{/yellow-fg}  ` +
         `Reason: {yellow-fg}${reasoningFilter===null?'*':(reasoningFilter?'Y':'N')}{/yellow-fg}  ` +
+        `Wgts: {yellow-fg}${weightsFilter===null?'*':(weightsFilter?'OPEN':'CLOSED')}{/yellow-fg}  ` +
+        `Temp: {yellow-fg}${tempFilter===null?'*':(tempFilter?'Y':'N')}{/yellow-fg}  ` +
+        `Ctx≥ {yellow-fg}${minContextFilter ?? '*'}{/yellow-fg}  ` +
+        `In$≤ {yellow-fg}${maxInputCostFilter ?? '*'}{/yellow-fg}  ` +
+        `Out$≤ {yellow-fg}${maxOutputCostFilter ?? '*'}{/yellow-fg}  ` +
+        `InMod {yellow-fg}${modInFilter.length?modInFilter.join(','): '*'}{/yellow-fg}  ` +
+        `OutMod {yellow-fg}${modOutFilter.length?modOutFilter.join(','): '*'}{/yellow-fg}  ` +
         `Sort: {yellow-fg}${sortModes[sortIndex].name}{/yellow-fg}  ` +
         `Shown: {yellow-fg}${filtered.length}{/yellow-fg}/${models.length}` +
-        (message ? `  | ${message}` : '')
-      );
+        (message ? `  | ${message}` : '');
+      status.setContent(line1 + "\n" + line2);
     } else if (message) {
       status.setContent(message);
     } else {
@@ -422,6 +451,80 @@ const interactiveBlessedMode = async () => {
     screen.render();
   }
 
+  function promptNumber(title, current, onSet) {
+    const prompt = blessed.prompt({ parent: screen, tags: true, label: ` {cyan-fg}${title}{/cyan-fg} `, width: '40%', height: 'shrink', border: 'line', keys: true, vi: true });
+    prompt.input('Blank to clear:', current == null ? '' : String(current), (err, value) => {
+      if (!err) {
+        const v = (value || '').trim();
+        onSet(v ? Number(v) : null);
+        refresh(false, `${title} updated`);
+      }
+      prompt.destroy(); list.focus(); screen.render();
+    });
+    prompt.focus(); screen.render();
+  }
+
+  function modalitiesSelect() {
+    const inSet = new Set(modInFilter);
+    const outSet = new Set(modOutFilter);
+    const modal = blessed.box({
+      parent: screen,
+      label: ' {cyan-fg}Modalities{/cyan-fg} ',
+      top: 'center', left: 'center', width: '60%', height: '70%',
+      border: 'line', tags: true
+    });
+
+    const renderItems = (set) => allModalities.map(n => `${set.has(n) ? '{green-fg}☑{/green-fg}' : '☐'} ${n}`);
+
+    const listIn = blessed.list({
+      parent: modal,
+      label: ' {cyan-fg}Input{/cyan-fg} ',
+      left: 0, top: 0, width: '50%-1', height: '100%-1',
+      tags: true, keys: true, vi: true, mouse: true,
+      style: { selected: { inverse: true } },
+      items: renderItems(inSet)
+    });
+    const listOut = blessed.list({
+      parent: modal,
+      label: ' {cyan-fg}Output{/cyan-fg} ',
+      left: '50%+1', top: 0, width: '50%-2', height: '100%-1',
+      tags: true, keys: true, vi: true, mouse: true,
+      style: { selected: { inverse: true } },
+      items: renderItems(outSet)
+    });
+
+    function toggle(list, set) {
+      const idx = list.selected;
+      const name = allModalities[idx];
+      if (!name) return;
+      if (set.has(name)) set.delete(name); else set.add(name);
+      list.setItem(idx, renderItems(set)[idx]);
+      screen.render();
+    }
+
+    listIn.on('keypress', (ch, key) => {
+      if (key.name === 'space') toggle(listIn, inSet);
+      if (key.name === 'tab') { listOut.focus(); screen.render(); }
+    });
+    listOut.on('keypress', (ch, key) => {
+      if (key.name === 'space') toggle(listOut, outSet);
+      if (key.name === 'tab') { listIn.focus(); screen.render(); }
+    });
+
+    const escHandler = function escHandler() {
+      if (!modal.destroyed) {
+        modInFilter = Array.from(inSet);
+        modOutFilter = Array.from(outSet);
+        modal.destroy();
+        screen.off('key', escHandler);
+        refresh(false, 'Modalities updated');
+      }
+    };
+    screen.key(['escape'], escHandler);
+    listIn.focus();
+    screen.render();
+  }
+
   // Key bindings
   screen.key(['q', 'C-c'], () => process.exit(0));
   screen.key('/', promptSearch);
@@ -429,6 +532,12 @@ const interactiveBlessedMode = async () => {
   screen.key('t', () => { cycleTool(); refresh(true, 'Tool filter'); });
   screen.key('r', () => { cycleReasoning(); refresh(true, 'Reason filter'); });
   screen.key('s', () => { cycleSort(); refresh(true, 'Sort changed'); });
+  screen.key('w', () => { cycleWeights(); refresh(true, 'Weights filter'); });
+  screen.key('y', () => { cycleTemp(); refresh(true, 'Temp filter'); });
+  screen.key('x', () => { promptNumber('Min Context', minContextFilter, v => { minContextFilter = v; }); });
+  screen.key('i', () => { promptNumber('Max Input $ (per 1M)', maxInputCostFilter, v => { maxInputCostFilter = v; }); });
+  screen.key('o', () => { promptNumber('Max Output $ (per 1M)', maxOutputCostFilter, v => { maxOutputCostFilter = v; }); });
+  screen.key('m', () => { modalitiesSelect(); });
   screen.key('c', async () => {
     const m = filtered[list.selected];
     if (!m) return;
@@ -473,7 +582,24 @@ const interactiveTableMode = async () => {
   let reasoning = 'Any';
   let sort = 'Default';
 
+  // Additional filters for table mode
+  let minContext = null;       // number | null
+  let maxInputCost = null;     // number | null
+  let maxOutputCost = null;    // number | null
+  let weights = 'Any';         // Any | OPEN | CLOSED
+  let temperature = 'Any';     // Any | Y | N
+  let modIn = [];              // string[]
+  let modOut = [];             // string[]
+
+  // Pagination
+  let page = 0;
+  let pageSize = 30;
+
   const providers = [...new Set(models.map(m => m.provider))].sort();
+  const allModalities = [...new Set(models.flatMap(m => [
+    ...(m.modalitiesInput || []),
+    ...(m.modalitiesOutput || [])
+  ]))].sort();
 
   const interactiveSortMap = {
     'Input cost asc': ['inputCost', 1],
@@ -503,49 +629,80 @@ const interactiveTableMode = async () => {
     if (provider !== 'Any') list = list.filter(m => m.provider === provider);
     if (tool !== 'Any') list = list.filter(m => (tool === 'Y' ? m.tool : !m.tool));
     if (reasoning !== 'Any') list = list.filter(m => (reasoning === 'Y' ? m.reasoning : !m.reasoning));
+    if (weights !== 'Any') list = list.filter(m => weights === 'OPEN' ? m.openWeights : !m.openWeights);
+    if (temperature !== 'Any') list = list.filter(m => temperature === 'Y' ? m.temperature : !m.temperature);
+    if (minContext != null) list = list.filter(m => (m.contextLimit ?? -Infinity) >= minContext);
+    if (maxInputCost != null) list = list.filter(m => m.inputCost != null && m.inputCost <= maxInputCost);
+    if (maxOutputCost != null) list = list.filter(m => m.outputCost != null && m.outputCost <= maxOutputCost);
+    if (modIn.length) list = list.filter(m => modIn.every(x => (m.modalitiesInput || []).includes(x)));
+    if (modOut.length) list = list.filter(m => modOut.every(x => (m.modalitiesOutput || []).includes(x)));
     if (sort !== 'Default') {
       const [field, dir] = interactiveSortMap[sort] ?? [];
       if (field) {
         list = [...list].sort((a, b) => {
           const av = a[field] ?? Infinity;
           const bv = b[field] ?? Infinity;
-            return typeof av === 'string' ? dir * av.localeCompare(bv) : dir * (av - bv);
+          return typeof av === 'string' ? dir * av.localeCompare(bv) : dir * (av - bv);
         });
       }
     }
-    return list.slice(0, 30);
+    return list;
   };
 
   const loop = async () => {
-    const list = currentFiltered();
+    const full = currentFiltered();
+    const pages = Math.max(1, Math.ceil(full.length / pageSize));
+    if (page >= pages) page = pages - 1;
+    const start = page * pageSize;
+    const end = Math.min(full.length, start + pageSize);
+    const pageItems = full.slice(start, end);
+
     console.clear();
     console.log(chalk.cyan.bold('models.dev catalogue (Interactive Table)'));
-    console.log(chalk.gray(`Showing ${list.length} of ${models.length} (top 30 max).`));
-    printTable(list);
-    console.log(chalk.gray('Actions: (s)earch (p)rovider (t)ool (r)easoning s(o)rt (c)opy (q)uit'));    
+    console.log(chalk.gray(`Filters:`),
+      chalk.yellow(`search:`), searchTerm || '*',
+      chalk.yellow(`prov:`), provider,
+      chalk.yellow(`tool:`), tool,
+      chalk.yellow(`reason:`), reasoning,
+      chalk.yellow(`weights:`), weights,
+      chalk.yellow(`temp:`), temperature,
+      chalk.yellow(`ctx>=`), minContext ?? '-',
+      chalk.yellow(`in$<=`), maxInputCost ?? '-',
+      chalk.yellow(`out$<=`), maxOutputCost ?? '-',
+      chalk.yellow(`inMod:`), modIn.length ? modIn.join(',') : '-',
+      chalk.yellow(`outMod:`), modOut.length ? modOut.join(',') : '-'
+    );
+    console.log(chalk.gray(`Showing ${start + 1}-${end} of ${full.length}  page ${page + 1}/${pages}  size ${pageSize}`));
+    printTable(pageItems);
+    console.log(chalk.gray('Actions: (s)earch (p)rovider (t)ool (r)eason s(o)rt (w)eights (temp) (ctx) (in)max$ (out)max$ (m)odalities (ps)ize (n)ext (b)ack (g)o (c)opy (clear) (q)uit'));
     const { action } = await inquirer.prompt([
       { name: 'action', type: 'input', message: 'Command:' }
     ]);
 
-    switch (action.toLowerCase()) {
+    const cmd = (action || '').toLowerCase().trim();
+    switch (cmd) {
       case 's': {
         const { term } = await inquirer.prompt([{ name: 'term', type: 'input', message: 'Search term (blank clears):', default: searchTerm }]);
         searchTerm = term.trim();
+        page = 0;
         break;
       }
       case 'p': {
         const { prov } = await inquirer.prompt([{ name: 'prov', type: 'list', message: 'Provider filter', choices: ['Any', ...providers], default: provider }]);
         provider = prov;
+        page = 0;
         break;
       }
       case 't': {
         const { val } = await inquirer.prompt([{ name: 'val', type: 'list', message: 'Tool calling filter', choices: ['Any', 'Y', 'N'], default: tool }]);
         tool = val;
+        page = 0;
         break;
       }
       case 'r': {
         const { val } = await inquirer.prompt([{ name: 'val', type: 'list', message: 'Reasoning filter', choices: ['Any', 'Y', 'N'], default: reasoning }]);
         reasoning = val;
+        page = 0;
         break;
       }
       case 'o': {
@@ -553,15 +710,98 @@ const interactiveTableMode = async () => {
         sort = val;
         break;
       }
+      case 'w': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'list', message: 'Weights openness', choices: ['Any', 'OPEN', 'CLOSED'], default: weights }]);
+        weights = val;
+        page = 0;
+        break;
+      }
+      case 'temp': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'list', message: 'Temperature adjustable', choices: ['Any', 'Y', 'N'], default: temperature }]);
+        temperature = val;
+        page = 0;
+        break;
+      }
+      case 'ctx':
+      case 'x': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'input', message: 'Min context length (blank clears):', default: minContext ?? '' }]);
+        const n = String(val).trim();
+        minContext = n ? Number(n) : null;
+        page = 0;
+        break;
+      }
+      case 'in': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'input', message: 'Max INPUT cost per 1M (blank clears):', default: maxInputCost ?? '' }]);
+        const n = String(val).trim();
+        maxInputCost = n ? Number(n) : null;
+        page = 0;
+        break;
+      }
+      case 'out': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'input', message: 'Max OUTPUT cost per 1M (blank clears):', default: maxOutputCost ?? '' }]);
+        const n = String(val).trim();
+        maxOutputCost = n ? Number(n) : null;
+        page = 0;
+        break;
+      }
+      case 'm': {
+        const answers = await inquirer.prompt([
+          { name: 'in', type: 'checkbox', message: 'Input modalities (empty = any)', choices: allModalities, default: modIn },
+          { name: 'out', type: 'checkbox', message: 'Output modalities (empty = any)', choices: allModalities, default: modOut }
+        ]);
+        modIn = answers.in;
+        modOut = answers.out;
+        page = 0;
+        break;
+      }
+      case 'ps': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'input', message: 'Page size:', default: String(pageSize) }]);
+        pageSize = Math.max(1, Number(String(val).trim()) || pageSize);
+        page = 0;
+        break;
+      }
+      case 'n':
+      case 'next': {
+        page = Math.min(pages - 1, page + 1);
+        break;
+      }
+      case 'b':
+      case 'prev':
+      case 'back': {
+        page = Math.max(0, page - 1);
+        break;
+      }
+      case 'g':
+      case 'go': {
+        const { val } = await inquirer.prompt([{ name: 'val', type: 'input', message: `Go to page (1-${pages}):`, default: String(page + 1) }]);
+        const n = Math.max(1, Math.min(pages, Number(String(val).trim()) || 1));
+        page = n - 1;
+        break;
+      }
       case 'c': {
-        if (!list.length) {
+        if (!pageItems.length) {
           console.log('Nothing to copy.');
           break;
         }
-        const { mid } = await inquirer.prompt([{ name: 'mid', type: 'list', message: 'Select model to copy ID', choices: list.map(m => ({ name: `${m.provider} | ${m.name} | ${m.id}`, value: m.id })) }]);
+        const { mid } = await inquirer.prompt([{ name: 'mid', type: 'list', message: 'Select model to copy ID', choices: pageItems.map(m => ({ name: `${m.provider} | ${m.name} | ${m.id}`, value: m.id })) }]);
         await clipboardy.write(mid);
         console.log(chalk.green('Copied to clipboard.'));
         await new Promise(r => setTimeout(r, 700));
+        break;
+      }
+      case 'clear': {
+        searchTerm = '';
+        provider = 'Any';
+        tool = 'Any';
+        reasoning = 'Any';
+        weights = 'Any';
+        temperature = 'Any';
+        minContext = null;
+        maxInputCost = null;
+        maxOutputCost = null;
+        modIn = [];
+        modOut = [];
+        page = 0;
         break;
       }
       case 'q':
@@ -577,6 +817,7 @@ const interactiveTableMode = async () => {
 const program = new Command();
 program
   .name('models-dev')
+  .version(pkg.version)
   .description('Explore the models.dev catalogue (non-interactive & interactive)')
   .option('--search <term>', 'Search by model name or id')
   .option('--provider <name>', 'Filter by provider (id or name)')
@@ -587,28 +828,23 @@ program
   .option('--compact', 'Compact output provider:model:name:id (non-JSON)')
   .option('--ui <mode>', 'Interactive UI mode: blessed | table | auto (default)')
   .action(async (opts) => {
-    const passedAnyFlag = Object.keys(opts).some(k => opts[k] !== undefined);
-    if (!passedAnyFlag) {
-      // Determine interactive UI mode
-      const ui = opts.ui || process.env.MODELS_DEV_UI || 'auto';
-      if (ui === 'table') {
-        await interactiveTableMode();
-        return;
-      }
-      if (ui === 'blessed' || ui === 'auto') {
-        try {
-          await interactiveBlessedMode();
-          return;
-        } catch (e) {
-          if (ui === 'blessed') {
-            console.error(e.message);
-            process.exit(1);
-          }
-          console.error('Blessed UI failed, falling back to table mode:', e.message);
-        }
-      }
+    const otherFlagKeys = ['search','provider','tool','reasoning','sort','json','compact'];
+    const passedOtherFlags = otherFlagKeys.some(k => opts[k] !== undefined);
+    const uiReq = opts.ui || process.env.MODELS_DEV_UI || null;
+
+    // If UI is explicitly requested, honor it regardless of other flags
+    if (uiReq === 'table') {
       await interactiveTableMode();
       return;
+    }
+    if (uiReq === 'blessed') {
+      try { await interactiveBlessedMode(); return; }
+      catch (e) { console.error('Blessed UI failed, falling back to table mode:', e.message); await interactiveTableMode(); return; }
+    }
+    if (!passedOtherFlags && (!uiReq || uiReq === 'auto')) {
+      // Auto-detect: try blessed then table
+      try { await interactiveBlessedMode(); return; }
+      catch (e) { console.error('Blessed UI failed, falling back to table mode:', e.message); await interactiveTableMode(); return; }
     }
     try {
       let models = await fetchCatalogue();
