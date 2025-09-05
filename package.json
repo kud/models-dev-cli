@@ -1,6 +1,6 @@
 {
   "name": "models-dev-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "CLI to explore and query models.dev catalogue (non-interactive + interactive TUI).",
   "bin": {
