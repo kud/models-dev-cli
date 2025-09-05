@@ -1,5 +1,5 @@
 {
-  "name": "models-dev-cli",
+  "name": "@kud/models-dev-cli",
   "version": "0.2.0",
   "type": "module",
   "description": "CLI to explore and query models.dev catalogue (non-interactive + interactive TUI).",
@@ -20,7 +20,15 @@
     "models.dev",
     "tui"
   ],
-  "author": "",
+  "author": "kud",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kud/models-dev-cli.git"
+  },
+  "homepage": "https://github.com/kud/models-dev-cli#readme",
+  "bugs": {
+    "url": "https://github.com/kud/models-dev-cli/issues"
+  },
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.6.0",
@@ -34,5 +42,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

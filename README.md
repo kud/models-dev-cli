@@ -4,7 +4,7 @@
 
 Explore the models.dev catalogue from your terminal. Fast search, rich TUI, copy-to-clipboard.
 
-[![npm](https://img.shields.io/npm/v/models-dev-cli.svg?label=models-dev-cli)](https://www.npmjs.com/package/models-dev-cli)
+[![npm](https://img.shields.io/npm/v/%40kud%2Fmodels-dev-cli.svg?label=%40kud%2Fmodels-dev-cli)](https://www.npmjs.com/package/@kud/models-dev-cli)
 ![node](https://img.shields.io/badge/node-%3E%3D18-3C873A)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
@@ -19,7 +19,7 @@ Explore the models.dev catalogue from your terminal. Fast search, rich TUI, copy
 npx models-dev
 
 # or install globally
-npm i -g models-dev-cli
+npm i -g @kud/models-dev-cli
 models-dev   # alias: mdl
 ```
 
@@ -30,22 +30,32 @@ The CLI fetches the live catalogue and opens a split‑pane TUI by default. Pref
 <!-- Screenshots of the command in action -->
 <p align="center">
   <img src="assets/preview-tui-details.png" alt="Interactive TUI – details view" width="900" />
+  <br />
+  <em>Interactive TUI – split‑pane with detailed model info, costs, limits and meta.</em>
 </p>
 
 <p align="center">
   <img src="assets/preview-tui-provider-picker.png" alt="Interactive TUI – provider picker" width="900" />
+  <br />
+  <em>Provider picker (press <code>p</code>) to quickly filter the catalogue.</em>
 </p>
 
 <p align="center">
   <img src="assets/preview-tui-list.png" alt="Interactive TUI – model list" width="900" />
+  <br />
+  <em>Model list with fuzzy search and color badges for capabilities.</em>
 </p>
 
 <p align="center">
   <img src="assets/preview-tui-filters-bar.png" alt="Interactive TUI – filters and status bar" width="900" />
+  <br />
+  <em>Status/help bar showing keybindings and active filters.</em>
 </p>
 
 <p align="center">
   <img src="assets/preview-table-mode.png" alt="Non‑interactive table mode" width="900" />
+  <br />
+  <em>Non‑interactive table mode with an actions prompt for filtering and paging.</em>
 </p>
 
 ## Highlights
@@ -135,7 +145,7 @@ No color output desired? Set `NO_COLOR=1`.
 ## Development
 
 ```bash
-git clone https://github.com/your-org/models-dev-cli
+git clone https://github.com/kud/models-dev-cli
 cd models-dev-cli
 npm install
 npm link           # exposes `models-dev` and `mdl`
