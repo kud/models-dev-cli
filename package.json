@@ -1,6 +1,6 @@
 {
   "name": "models-dev-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "CLI to explore and query models.dev catalogue (non-interactive + interactive TUI).",
   "bin": {
@@ -11,9 +11,15 @@
     "start": "node index.js",
     "dev": "node index.js",
     "lint": "eslint .",
-    "test": "node --test" 
+    "test": "node --test"
   },
-  "keywords": ["ai", "models", "cli", "models.dev", "tui"],
+  "keywords": [
+    "ai",
+    "models",
+    "cli",
+    "models.dev",
+    "tui"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
