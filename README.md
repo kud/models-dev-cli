@@ -16,7 +16,7 @@ Explore the models.dev catalogue from your terminal. Fast search, rich TUI, copy
 
 ```bash
 # one‑shot
-npx models-dev
+npx -p @kud/models-dev-cli models-dev
 
 # or install globally
 npm i -g @kud/models-dev-cli
@@ -130,7 +130,7 @@ If you still hit issues:
 
 ```bash
 # simplest workaround
-TERM=xterm npx models-dev
+TERM=xterm npx -p @kud/models-dev-cli models-dev
 
 # fall back to table UI
 models-dev --ui table
