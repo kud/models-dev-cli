@@ -46,11 +46,7 @@ The CLI fetches the live catalogue and opens a split‑pane TUI by default. Pref
   <em>Model list with fuzzy search and color badges for capabilities.</em>
 </p>
 
-<p align="center">
-  <img src="assets/preview-tui-filters-bar.png" alt="Interactive TUI – filters and status bar" width="900" />
-  <br />
-  <em>Status/help bar showing keybindings and active filters.</em>
-</p>
+
 
 <p align="center">
   <img src="assets/preview-table-mode.png" alt="Non‑interactive table mode" width="900" />
