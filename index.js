@@ -158,11 +158,19 @@ const interactiveBlessedMode = async () => {
 
   let filtered = models;
 
-  // Some terminals (notably iTerm2 with xterm-256color) trip over terminfo Setulc.
-  // Avoid using tput/terminfo by default to prevent the Setulc crash.
+  // Terminal quirk handling: some terminals (notably iTerm2 with TERM=xterm-256color)
+  // make blessed spew a Setulc terminfo evaluation error. We aggressively fall back
+  // to a simpler term definition and disable tput/terminfo use. Users can force this
+  // with MODELS_DEV_FORCE_SIMPLE=1. To retain original TERM despite detection set
+  // MODELS_DEV_KEEP_TERM=1.
   const term = process.env.TERM || '';
   const isITerm = (process.env.TERM_PROGRAM || '').toLowerCase().includes('iterm');
-  const disableTput = /xterm-256color/i.test(term) || isITerm;
+  const problematic = /xterm-256color/i.test(term) || isITerm;
+  const forceSimple = problematic || process.env.MODELS_DEV_FORCE_SIMPLE === '1';
+  if (forceSimple && !process.env.MODELS_DEV_KEEP_TERM) {
+    if (!process.env.MODELS_DEV_ORIG_TERM) process.env.MODELS_DEV_ORIG_TERM = term;
+    process.env.TERM = 'xterm'; // simplify so blessed skips problematic Setulc expr
+  }
 
   // Create screen with a safe fallback for terminals that choke on terminfo (Setulc error)
   let screen;
@@ -170,10 +178,11 @@ const interactiveBlessedMode = async () => {
     screen = blessed.screen({
       smartCSR: true,
       title: 'models.dev catalogue',
-      fullUnicode: true,
-      forceUnicode: true,
-      tput: disableTput ? false : undefined,
-      useBCE: false
+      fullUnicode: !forceSimple, // disable full unicode in simple mode (safer)
+      forceUnicode: !forceSimple,
+      tput: false,
+      useBCE: false,
+      terminal: forceSimple ? 'xterm' : undefined
     });
   } catch (err) {
     // Fallback: downgrade terminal features to avoid Setulc/terminfo eval crashes
