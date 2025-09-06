@@ -1,6 +1,6 @@
 {
   "name": "@kud/models-dev-cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "description": "CLI to explore and query models.dev catalogue (non-interactive + interactive TUI).",
   "bin": {
