@@ -1,40 +1,65 @@
 <div align="center">
 
-# models-dev CLI
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white)
+![npm](https://img.shields.io/npm/v/%40kud%2Fmodels-dev-cli?style=flat-square&color=CB3837)
+![MIT](https://img.shields.io/badge/licence-MIT-22C55E?style=flat-square)
 
-Explore the [models.dev](https://models.dev) LLM catalogue from your terminal — fuzzy search, a rich TUI, and copy-to-clipboard model IDs.
+**CLI to explore and query models.dev catalogue (non-interactive + interactive TUI).**
 
-[![npm](https://img.shields.io/npm/v/%40kud%2Fmodels-dev-cli.svg?label=%40kud%2Fmodels-dev-cli)](https://www.npmjs.com/package/@kud/models-dev-cli)
-![node](https://img.shields.io/badge/node-%3E%3D18-3C873A)
-![license](https://img.shields.io/badge/license-MIT-blue)
-
-<img src="assets/preview-tui-details.png" alt="Interactive TUI – details view" width="900" />
+<a href="https://kud.io/projects/models-dev-cli">Website</a> · <a href="https://kud.io/projects/models-dev-cli/docs">Documentation</a>
 
 </div>
 
+## Features
+
+- **TUI browser** — split-pane interactive interface powered by Blessed; browse, filter, and inspect models without leaving the terminal
+- **Fuzzy search** — find any model by name or ID across the full models.dev catalogue
+- **Provider filtering** — narrow results to a specific provider by ID or display name
+- **Capability flags** — filter instantly for models with tool calling (`--tool`) or reasoning (`--reasoning`)
+- **Copy to clipboard** — select a model in the TUI and copy its ID straight to your clipboard
+- **Flexible output** — raw JSON (`--json`), compact colon-delimited lines (`--compact`), or a rendered table (`--ui table`)
+
+![models-dev TUI details view](assets/preview-tui-details.png)
+
 ## Install
 
-```bash
-# one-shot
-npx -p @kud/models-dev-cli models-dev
-
-# or install globally
-npm i -g @kud/models-dev-cli
-models-dev   # alias: mdl
+```sh
+npm install -g @kud/models-dev-cli
 ```
 
-The CLI fetches the live catalogue and opens a split-pane TUI by default. Prefer a non-interactive table? Pass `--ui table` or any flag.
+## Usage
+
+```console
+$ models-dev --help
+Usage: models-dev [options]
+
+Explore the models.dev catalogue (non-interactive & interactive)
+
+Options:
+  -V, --version      output the version number
+  --search <term>    Search by model name or id
+  --provider <name>  Filter by provider (id or name)
+  --tool             Only models with tool calling
+  --reasoning        Only models with reasoning capability
+  --sort <field>     Sort by field: input-cost | output-cost | provider
+  --json             Output raw JSON for resulting models
+  --compact          Compact output provider:model:name:id (non-JSON)
+  --ui <mode>        Interactive UI mode: blessed | table | auto (default)
+  -h, --help         display help for command
+
+$ models-dev --provider anthropic --tool
+$ models-dev --search gpt-4 --json
+$ mdl --reasoning --sort input-cost
+```
 
 ## Development
 
-```bash
-git clone https://github.com/kud/models-dev-cli
+```sh
+git clone https://github.com/kud/models-dev-cli.git
 cd models-dev-cli
 npm install
-npm link           # exposes `models-dev` and `mdl`
-models-dev         # run locally
+npm link
+models-dev
 ```
 
----
-
-📚 **Full documentation → https://kud.io/projects/models-dev-cli/docs**
+📚 **Full documentation → [models-dev-cli/docs](https://kud.io/projects/models-dev-cli/docs)**
